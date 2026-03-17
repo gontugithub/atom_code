@@ -37,8 +37,8 @@ void setup()
 
   // configure the sensors
   qtr.setTypeRC();
-  qtr.setSensorPins((const uint8_t[]){3, 4, 5, 6, 7, 8, 9, 10}, SensorCount);
-  qtr.setEmitterPin(A1);
+  qtr.setSensorPins((const uint8_t[]){A0, A1, A2, A3, A4, A5, 11, 10}, SensorCount);
+  qtr.setEmitterPin(12);
 
   delay(500);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -51,7 +51,6 @@ void setup()
 
   delay(500);
   Serial.println("calibrando:");
-
 
 
   for (uint16_t i = 0; i < 400; i++)
