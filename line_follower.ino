@@ -1,100 +1,93 @@
 #include <QTRSensors.h>
 
-// This example is designed for use with eight RC QTR sensors. These
-// reflectance sensors should be connected to digital pins 3 to 10. The
-// sensors' emitter control pin (CTRL or LEDON) can optionally be connected to
-// digital pin 2, or you can leave it disconnected and remove the call to
-// setEmitterPin().
-//
-// The setup phase of this example calibrates the sensors for ten seconds and
-// turns on the Arduino's LED (usually on pin 13) while calibration is going
-// on. During this phase, you should expose each reflectance sensor to the
-// lightest and darkest readings they will encounter. For example, if you are
-// making a line follower, you should slide the sensors across the line during
-// the calibration phase so that each sensor can get a reading of how dark the
-// line is and how light the ground is.  Improper calibration will result in
-// poor readings.
-//
-// The main loop of the example reads the calibrated sensor values and uses
-// them to estimate the position of a line. You can test this by taping a piece
-// of 3/4" black electrical tape to a piece of white paper and sliding the
-// sensor across it. It prints the sensor values to the serial monitor as
-// numbers from 0 (maximum reflectance) to 1000 (minimum reflectance) followed
-// by the estimated location of the line as a number from 0 to 5000. 1000 means
-// the line is directly under sensor 1, 2000 means directly under sensor 2,
-// etc. 0 means the line is directly under sensor 0 or was last seen by sensor
-// 0 before being lost. 5000 means the line is directly under sensor 5 or was
-// last seen by sensor 5 before being lost.a
 QTRSensors qtr;
-
 const uint8_t SensorCount = 8;
 uint16_t sensorValues[SensorCount];
 
-void setup()
-{
-  Serial.begin(9600);
-  Serial.println("CALIBRACION EMPIEZA: ");
+// --- Pines de Motores ---
+const int ENA = 3; const int IN1 = 4; const int IN2 = 5;
+const int ENB = 9; const int IN3 = 8; const int IN4 = 7;
 
-  // configure the sensors
+// --- Parámetros de Control ---
+// Subimos un pelín el Kp para que el ajuste en las curvas sea más agresivo
+float Kp = 0.035; 
+
+// --- Velocidades y Giro ---
+const int velocidadBase = 60; 
+const int velocidadMax = 100; 
+const int limiteReversa = -60; 
+
+// NUEVO: El umbral físico de tus motores. Si el PWM es menor que esto, 
+// el motor hace ruido pero no gira. Esto le da el empujón necesario.
+const int potenciaMinima = 50; 
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(ENA, OUTPUT); pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
+  pinMode(ENB, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+
   qtr.setTypeRC();
   qtr.setSensorPins((const uint8_t[]){A0, A1, A2, A3, A4, A5, 11, 10}, SensorCount);
   qtr.setEmitterPin(12);
 
   delay(500);
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH); // turn on Arduino's LED to indicate we are in calibration mode
-
-  // 2.5 ms RC read timeout (default) * 10 reads per calibrate() call
-  // = ~25 ms per calibrate() call.
-  // Call calibrate() 400 times to make calibration take about 10 seconds.
-
-
-  delay(500);
-  Serial.println("calibrando:");
-
-
-  for (uint16_t i = 0; i < 400; i++)
-  {
+  
+  // Calibración
+  digitalWrite(LED_BUILTIN, HIGH);
+  for (uint16_t i = 0; i < 400; i++) {
     qtr.calibrate();
-    Serial.println(i);
   }
-  digitalWrite(LED_BUILTIN, LOW); // turn off Arduino's LED to indicate we are through with calibration
-
-  // print the calibration minimum values measured when emitters were on
- 
-  for (uint8_t i = 0; i < SensorCount; i++)
-  {
-    Serial.print(qtr.calibrationOn.minimum[i]);
-    Serial.print(' ');
-  }
-  Serial.println();
-
-  // print the calibration maximum values measured when emitters were on
-  for (uint8_t i = 0; i < SensorCount; i++)
-  {
-    Serial.print(qtr.calibrationOn.maximum[i]);
-    Serial.print(' ');
-  }
-  Serial.println();
-  Serial.println();
+  digitalWrite(LED_BUILTIN, LOW);
   delay(1000);
 }
 
-void loop()
-{
-  // read calibrated sensor values and obtain a measure of the line position
-  // from 0 to 5000 (for a white line, use readLineWhite() instead)
+void loop() {
   uint16_t position = qtr.readLineBlack(sensorValues);
 
-  // print the sensor values as numbers from 0 to 1000, where 0 means maximum
-  // reflectance and 1000 means minimum reflectance, followed by the line
-  // position
-  for (uint8_t i = 0; i < SensorCount; i++)
-  {
-    Serial.print(sensorValues[i]);
-    Serial.print('\t');
-  }
-  Serial.println(position);
+  int error = 3500 - position;
+  int ajuste = error * Kp;
 
-  delay(250);
+  int velocidadMotorA = velocidadBase + ajuste;
+  int velocidadMotorB = velocidadBase - ajuste;
+
+  velocidadMotorA = constrain(velocidadMotorA, limiteReversa, velocidadMax);
+  velocidadMotorB = constrain(velocidadMotorB, limiteReversa, velocidadMax);
+
+  moverMotores(velocidadMotorA, velocidadMotorB);
+}
+
+// --- Función Corregida: Control de Zona Muerta ---
+void moverMotores(int m1, int m2) {
+  
+  // Procesar Motor A (Izquierdo/Derecho)
+  if (m1 > 0) { // Hacia adelante
+    if (m1 < potenciaMinima) m1 = potenciaMinima; // Empujón mínimo
+    digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+    analogWrite(ENA, m1);
+  } else if (m1 < 0) { // Hacia atrás
+    int m1_abs = abs(m1);
+    if (m1_abs < potenciaMinima) m1_abs = potenciaMinima; // Empujón mínimo hacia atrás
+    digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+    analogWrite(ENA, m1_abs);
+  } else { // Parado exactamente (0)
+    digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+    analogWrite(ENA, 0);
+  }
+
+  // Procesar Motor B (Izquierdo/Derecho)
+  if (m2 > 0) { // Hacia adelante
+    if (m2 < potenciaMinima) m2 = potenciaMinima; 
+    digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+    analogWrite(ENB, m2);
+  } else if (m2 < 0) { // Hacia atrás
+    int m2_abs = abs(m2);
+    if (m2_abs < potenciaMinima) m2_abs = potenciaMinima;
+    digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+    analogWrite(ENB, m2_abs);
+  } else { // Parado
+    digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+    analogWrite(ENB, 0);
+  }
 }
