@@ -15,7 +15,7 @@ pygame.init()
 pygame.joystick.init()
 
 if pygame.joystick.get_count() == 0:
-    print("No se detecta el mando. Conéctalo por USB.")
+    print("No se detecta el mando. Conéctalo por USB o Bluetooth al PC.")
     exit()
 
 mando = pygame.joystick.Joystick(0)
@@ -26,18 +26,49 @@ try:
     while True:
         pygame.event.pump()
         
-        # Multiplicamos por 100 para que el Arduino reciba valores de -100 a 100
-        # Invertimos el eje Y (multiplicando por -1) porque en los mandos "arriba" suele ser negativo
-        eje_x = int(mando.get_axis(0) * 100)
-        eje_y = int(mando.get_axis(1) * -100) 
+        # --- LECTURA DE BOTONES PARA ATAQUES ESPECIALES ---
+        # Los índices pueden variar según tu mando. Prueba con 4, 5, 6 y 7.
+        btn_l1 = mando.get_button(4) 
+        btn_r1 = mando.get_button(5) 
+        btn_l2 = mando.get_button(6) 
+        btn_r2 = mando.get_button(7) 
 
-        # Formato exacto que espera el Arduino: Xnn,Ynn\n
-        datos = f"X{eje_x},Y{eje_y}\n"
-        
-        arduino.write(datos.encode())
-        
-        print(f"Enviando -> {datos}", end='')
-        time.sleep(0.05) # 20 veces por segundo para que sea fluido
+        macro_enviada = False
+
+        if btn_r2:
+            arduino.write("M1\n".encode()) # Comando M1 = Torero
+            print("\n¡ATAQUE: Torero activado! (R2)")
+            macro_enviada = True
+            time.sleep(0.5) # Pausa para no enviar el comando 20 veces por el rebote del botón
+            
+        elif btn_l2:
+            arduino.write("M2\n".encode()) # Comando M2 = Tornado
+            print("\n¡ATAQUE: Tornado activado! (L2)")
+            macro_enviada = True
+            time.sleep(0.5)
+            
+        elif btn_r1:
+            arduino.write("M3\n".encode()) # Comando M3 = Embestida
+            print("\n¡ATAQUE: Embestida activada! (R1)")
+            macro_enviada = True
+            time.sleep(0.5)
+            
+        elif btn_l1:
+            arduino.write("M4\n".encode()) # Comando M4 = Freno de ancla
+            print("\n¡ATAQUE: Freno de Ancla! (L1)")
+            macro_enviada = True
+            time.sleep(0.5)
+
+        # --- MOVIMIENTO NORMAL SI NO HAY ATAQUE ---
+        if not macro_enviada:
+            velocidad = int(mando.get_axis(1) * -100) 
+            giro = int(mando.get_axis(3) * 100) 
+            
+            datos = f"X{giro},Y{velocidad}\n"
+            arduino.write(datos.encode())
+            print(f"Enviando -> {datos}   ", end='\r') # El \r hace que se sobreescriba la línea, queda más limpio
+            
+        time.sleep(0.05) 
 
 except KeyboardInterrupt:
     print("\nDeteniendo...")
