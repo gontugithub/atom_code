@@ -1,6 +1,6 @@
-# 🤖 ATOM_CODE: Sistema de Control Robótico
+# ATOM: CÓDIGO
 
-Proyecto de robótica modular para la asignatura de taller I, que integra control remoto mediante mando de PlayStation (PS4/PS5), comunicación Bluetooth con modulo HC-05 y identificación del robot rival para sumo
+Proyecto de robótica modular para la asignatura de taller I, que integra control remoto mediante mando de PlayStation, comunicación Bluetooth con modulo HC-05 y identificación del robot rival para sumo y sigue lineas con modulo array de diodos pololu.
 
 ---
 
@@ -9,30 +9,28 @@ Proyecto de robótica modular para la asignatura de taller I, que integra contro
 ```
 atom_code/
 ├── control_remote/
-│   ├── conexion_bluetooth.py      # Script pricipal
-│   └── control_nano.ino           # Firmware para Arduino (Nano/Uno)
-├── line_follower.ino              # Seguidor de líneas con sensores QTR
-├── sumo_bot.ino                   # Firmware especializado para combate
-├── sumo_bot_2xy.ino               # Variante de sumo bot
-├── requirements.txt               # Dependencias de Python
-├── Readme.md                      # Este archivo
-└── .gitignore                     # Archivos a excluir del repositorio
+|   ├── conexion_bluetooth.py  
+|
+├── ino/
+|   ├── line_follower.ino              
+|   ├── sumo_controll.ino          
+|            
+├── requirements.txt              
+├── Readme.md 
 ```
 
 ### Descripción de Archivos
 
 | Archivo | Descripción |
 |---------|-------------|
-| `control_remote/conexion_bluetooth.py` | Script en Python para procesar entrada del mando PS4/PS5 y transmitir vía Bluetooth |
-| `control_remote/control_nano.ino` | Firmware para Arduino que gestiona motores y sensores |
-| `line_follower.ino` | Lógica para seguidor de líneas utilizando sensores QTR |
-| `sumo_bot.ino` | Firmware especializado para combate de sumo robótico |
-| `sumo_bot_2xy.ino` | Variante mejorada de sumo bot |
-| `requirements.txt` | Librerías de Python necesarias |
+| `control_remote/conexion_bluetooth.py` | Script en Python para procesar entrada del mando PS4 y transmitir vía Bluetooth |
+| `ino/line_follower.ino` | Código para seguidor de líneas utilizando pololu array 8 diodos |
+| `ino/sumo_controll.ino` | Codigo para sumo con control manual |
+| `requirements.txt` | Librerías de Python necesarias para instalar en el entorno virtual `.venv` |
 
 ---
 
-## 🛠️ Configuración del Software (PC con Linux)
+## Configuración del Software (PC con Linux)
 
 ### 1. Preparar el Entorno de Python
 
@@ -68,7 +66,7 @@ sudo chmod 666 /dev/rfcomm0
 
 ---
 
-## 🔌 Conexiones de Hardware (Pinout)
+## Conexiones de Hardware (HAY QUE PONERLAS BIEN)
 
 ### Motores & Bluetooth
 
@@ -95,10 +93,13 @@ sudo chmod 666 /dev/rfcomm0
 ## 🚀 Ejecución del Proyecto
 
 ### Paso 1: Cargar el código en Arduino
-Sube `control_remote/sumo_bot2xy.ino` a tu placa Arduino mediante el IDE de Arduino.
+Sube `ino/sumo_controll.ino` a tu placa Arduino mediante el IDE de Arduino.
 
 ### Paso 2: Conectar el mando
 Enchufa tu mando de PlayStation (PS4/PS5) vía USB a la PC.
+
+### Paso 4: Enciende el robot
+Enciende el robot, y comprueba que el modulo `HC-05` , esta encendido (para ello tiene que tener una luz roja parpadeante)
 
 ### Paso 3: Iniciar el control remoto
 ```bash
@@ -129,7 +130,6 @@ python3 control_remote/conexion_bluetooth.py
 
 - ✅ Control remoto con mando de PlayStation
 - ✅ Comunicación Bluetooth HC-05
-- ✅ Evasión de obstáculos con sensores ultrasónicos
 - ✅ Seguidor de líneas automático
 - ✅ Modo combate sumo robótico
 - ✅ Gestión modular del código
